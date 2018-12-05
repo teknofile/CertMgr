@@ -46,16 +46,10 @@ def main(argv):
                 ('savePrivKey', cfgMgrSettings.getboolean(myCert, "get_privkey"))
             ])
             
+            # getCert will get and write and do all of the heavy lifting. 
+            # Might make sense to break them up at some point (i.e. get the cert func, write cert func)
             getCert(certParams)
             
-        
-    # TODO: Make these variables configurable
-    VAULT_SERVER=""
-    VAULT_TOKEN_PATH=""
-    VAULT_KEYROOT=""
-
-    sVaultToken = ""
-    
     
     # Move these higher in the main function
     try:
@@ -70,14 +64,6 @@ def main(argv):
         elif opt in ("-V", "--version"):
             print("Version: " + CERTMGR_VERSION)
             sys.exit(3)
-
-    sVaultToken = getVaultToken(VAULT_TOKEN_PATH)
-
-    # TODO: We shouldn't hardcode copperdale.teknofile.net
-    certDomain = "copperdale.teknofile.net"
-    for theCert in ("cert", "fullchain", "chain", "privkey"):
-        fileCert = open(DIR_OUTPUT_DIR + "/" + certDomain + "." + theCert, "w")
-        fileCert.write(getVaultItem(certDomain, theCert, VAULT_SERVER, sVaultToken, VAULT_KEYROOT))
 
 def getCert(certParams):
     # TODO: Need exception handling around all of this file I/O
