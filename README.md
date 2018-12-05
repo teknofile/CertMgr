@@ -1,4 +1,6 @@
-== CertMgr ==
+# CertMgr 
+
+## About
 
 CertMgr is a Python script I wrote to help faciliate distributing SSL 
 certificates in on my local network via an instance of <a href="https://vaultproject.io">Vault</a>. 
@@ -18,6 +20,12 @@ vault and write them to disk.
 I didn't feel very comfortable distributing keys via puppet and the like, 
 so I wrote this.
 
-= Usage =
+## Usage / Install
 
-TBD
+### Install
+There are a few python modules you will need to make sure are installed. They
+should be defined within the requirements.txt file. Install them via pip:
+
+`pip install -r src/requirements.txt`
+
+### Usage
