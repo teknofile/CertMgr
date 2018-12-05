@@ -1,0 +1,14 @@
+[CertMgr]
+conf_version = 1.0
+verbose_mode = true
+
+[copperdale.teknofile.net]
+vault_server = https://your.vault.host.example.org:8200"
+vault_token_file = /path/to/vault_token_file
+vault_key_name = secret
+save_path = /path/to/save/certs
+get_cert = true
+get_chain = False
+get_fullchain = true
+get_privkey = true
+encode_format = base64
