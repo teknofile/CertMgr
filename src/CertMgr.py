@@ -20,7 +20,13 @@ glbVerbose = False
 # Specify the directory to write the certificate files
 DIR_OUTPUT_DIR="/tmp"
 
-def main(argv):  
+def main(argv):
+    # Check to make sure that we have a config file
+    if(os.path.isfile('./config.ini') == False):
+        dbgMessage('Configuration file not found!')
+        print("Fata Error. config.ini not found.")
+        sys.exit(1)
+        
     cfgMgrSettings = ConfigParser.ConfigParser()
     cfgMgrSettings.read("./config.ini")
     
