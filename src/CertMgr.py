@@ -19,10 +19,45 @@ glbVerbose = False
 
 # Specify the directory to write the certificate files
 DIR_OUTPUT_DIR="/tmp"
+CONFIG_FILE_PATH="./config.ini"
 
 def main(argv):
+
+# TODO: Allow config.ini to be overridden by command line opts
+    try:
+        opts, args = getopt.getopt(argv, "Vhsg", ["version", "help", "store", "get"])
+    except getopt.GetoptError as err:
+        print str(err)  # will print something like "option -a not recognized"
+        printHelp() # TODO: print a usage output
+        sys.exit(2)
+        
+    
+    # TODO: Let's make sure we don't add -s and -g at the same time
+    # This is a very hacky way...
+    bStoreCerts = False
+    bGetCerts = False
+    
+    for opt, arg in opts:
+        if opt in ("-h", "--help"):
+            printHelp()
+            sys.exit(3)
+        elif opt in ("-V", "--version"):
+            print("Version: " + CERTMGR_VERSION)
+            sys.exit(3)
+        elif opt in ("-s", "--store"):
+            bStoreCerts = True
+        elif opt in ("-g", "--get"):
+            bGetCerts = True
+            
+    # This is a total hack, learn 2 use getopts better
+    if bStoreCerts and bGetCerts:
+        dbgMessage("Can't store and get at the same time.")
+        print("Can't store and get at the same time!!")
+        sys.exit(3)
+
+
     # Check to make sure that we have a config file
-    if(os.path.isfile('./config.ini') == False):
+    if(os.path.isfile(CONFIG_FILE_PATH) == False):
         dbgMessage('Configuration file not found!')
         print("Fata Error. config.ini not found.")
         sys.exit(1)
@@ -51,28 +86,53 @@ def main(argv):
                 ('saveFullChain', cfgMgrSettings.getboolean(myCert, "get_fullchain")),
                 ('savePrivKey', cfgMgrSettings.getboolean(myCert, "get_privkey"))
             ])
-            
-            # getCert will get and write and do all of the heavy lifting. 
-            # Might make sense to break them up at some point (i.e. get the cert func, write cert func)
-            getCert(certParams)
-            
-    
-    # Move these higher in the main function
+                        
+            if bGetCerts:
+                getCert(certParams)
+            elif bStoreCerts:
+                storeCert(certParams)
+
+def storeCert(certParams):
+    sVaultToken = getVaultToken(certParams['vaultTokenFile'])
+
     try:
-        opts, args = getopt.getopt(argv, "Vh:", ["version"])
-    except getopt.GetoptError:
-        print(sys.argv[0] + " [options]")
-        sys.exit(2)
+        # TODO: validate this URL is well formed. e.g. stupid quotes, is a real host, is https that kind of stuff
+        vaultClient = hvac.Client(url=certParams['vaultServer'], token=sVaultToken)
+    except KeyError:
+        print("Error: Making connection to vault host: {}".format(certParams['vaultServer']))
+
+    try:
+        fHandle = open("/etc/letsencrypt/live/" + certParams['certDomain'] + "/cert.pem", "r")
+        sCert = fHandle.read()
+        fHandle.close()
+
+        fHandle = open("/etc/letsencrypt/live/" + certParams['certDomain'] + "/chain.pem", "r")
+        sChain = fHandle.read()
+        fHandle.close()
+
+        fHandle = open("/etc/letsencrypt/live/" + certParams['certDomain'] + "/fullchain.pem", "r")
+        sFullChain = fHandle.read()
+        fHandle.close()
+
+        fHandle = open("/etc/letsencrypt/live/" + certParams['certDomain'] + "/privkey.pem", "r")
+        sPrivKey = fHandle.read()
+        fHandle.close()
+
         
-    for opt, arg in opts:
-        if opt == '-h':
-            printHelp()
-        elif opt in ("-V", "--version"):
-            print("Version: " + CERTMGR_VERSION)
-            sys.exit(3)
+    except IOError as e:
+        print "I/O error({0}): {1}".format(e.errno, e.strerror)
+    except:
+        print "Unexpected error: " + sys.exc_info()[0]
+        
+    vaultClient.write(certParams['vaultKeyName'] + "/" + certParams['certDomain'],
+                                  cert=base64.b64encode(sCert),
+                                  chain=base64.b64encode(sChain),
+                                  fullchain=base64.b64encode(sFullChain),
+                                  privkey=base64.b64encode(sPrivKey))
+    
+    return True
 
 def getCert(certParams):
-    # TODO: Need exception handling around all of this file I/O
     sVaultToken = getVaultToken(certParams['vaultTokenFile'])
     if certParams['saveCert'] == True:
         writeCertFile(certParams, "cert", sVaultToken)
@@ -118,7 +178,6 @@ def getVaultToken(sTokenPath):
 
     return sVaultToken.strip()
 
-# getVaultItem(certParams['certDomain'], certFileExt, sVaultToken)
 def getVaultItem(certParams, theKey, sVaultToken):
     # Valid options for "theKey" are:
     #   cert
