@@ -75,28 +75,28 @@ def getCert(certParams):
     # TODO: Need exception handling around all of this file I/O
     sVaultToken = getVaultToken(certParams['vaultTokenFile'])
     if certParams['saveCert'] == True:
-        try:
-            fileCert = open(certParams['savePath'] + "/" + certParams['certDomain'] + ".cert", "w")
-            fileCert.write(getVaultItem(certParams['certDomain'], "cert", certParams['vaultServer'], sVaultToken, certParams['vaultKeyName']))
-            fileCert.close()
-        except IOError as e:
-            print "I/O error({0}): {1}".format(e.errno, e.strerror)
-        except:
-            print "Unexpected error:", sys.exc_info()[0]
+        writeCertFile(certParams, "cert", sVaultToken)
     if certParams['saveChain'] == True:
-        fileCert = open(certParams['savePath'] + "/" + certDomain + ".cert", "w")
-        fileCert.write(getVaultItem(certParams['certDomain'], "chain", certParams['vaultServer'], sVaultToken, certParams['vaultKeyName']))
-        fileCert.close()
+        writeCertFile(certParams, "chain", sVaultToken)
     if certParams['saveFullChain'] == True:
-        fileCert = open(certParams['savePath'] + "/" + certDomain + ".cert", "w")
-        fileCert.write(getVaultItem(certParams['certDomain'], "fullchain", certParams['vaultServer'], sVaultToken, certParams['vaultKeyName']))
-        fileCert.close()
+        writeCertFile(certParams, "fullchain", sVaultToken)
     if certParams['savePrivKey'] == True:
-        fileCert = open(certParams['savePath'] + "/" + certDomain + ".cert", "w")
-        fileCert.write(getVaultItem(certParams['certDomain'], "privkey", certParams['vaultServer'], sVaultToken, certParams['vaultKeyName']))
-        fileCert.close()
+        writeCertFile(certParams, "privkey", sVaultToken)
+
     return True
     
+def writeCertFile(certParams, certFileExt, sVaultToken):
+    try:
+        fHandle = open(certParams['savePath'] + "/" + certParams['certDomain'] + "." + certFileExt, "w")
+        fHandle.write(getVaultItem(certParams, certFileExt, sVaultToken))
+        fHandle.close()
+    except IOError as e:
+        print "I/O error({0}): {1}".format(e.errno, e.strerror)
+    except:
+        print "Unexpected error: " + sys.exc_info()[0]
+        
+    return True
+
 def dbgMessage(sMessage):
     if glbVerbose == True:
         print("--- " + str(sMessage))
@@ -118,7 +118,8 @@ def getVaultToken(sTokenPath):
 
     return sVaultToken.strip()
 
-def getVaultItem(theCertName, theKey, sVaultServer, sVaultToken, sVaultKey):
+# getVaultItem(certParams['certDomain'], certFileExt, sVaultToken)
+def getVaultItem(certParams, theKey, sVaultToken):
     # Valid options for "theKey" are:
     #   cert
     #   fullchain
@@ -127,19 +128,22 @@ def getVaultItem(theCertName, theKey, sVaultServer, sVaultToken, sVaultKey):
     # TODO: If it's not one of those, we should raise an exception
 
     try:
-        vaultClient = hvac.Client(url=sVaultServer, token=sVaultToken)
+        # TODO: validate this URL is well formed. e.g. stupid quotes, is a real host, is https that kind of stuff
+        vaultClient = hvac.Client(url=certParams['vaultServer'], token=sVaultToken)
     except KeyError:
-        print("Error: Making connection to vault host: {}".format(sVaultServer))
+        print("Error: Making connection to vault host: {}".format(certParams['vaultServer']))
 
-    theResult = vaultClient.read(sVaultKey + "/" + theCertName)
+    theResult = vaultClient.read(certParams['vaultKeyName'] + "/" + certParams['certDomain'])
     if theResult is None:
-        raise Exception('Unable to find secret: ' + sVaultKey + "/" + theCertName)
+        dbgMessage("Unable to find secret: " + certParams['vaultKeyName'] + "/" + certParams['certDomain'])
+        return ""
     else:
         try:
             return base64.decodestring(theResult['data'][theKey])
         except KeyError:
-            print(theResult)
-            raise Exception('Unable to find key in response data from Vault')
+            dbgMessage(theResult)
+            dbgMessage('Unable to find key in response data from Vault')
+            return ""
 
     
 if __name__ == "__main__":
