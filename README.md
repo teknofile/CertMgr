@@ -29,3 +29,23 @@ should be defined within the requirements.txt file. Install them via pip:
 `pip install -r src/requirements.txt`
 
 ### Usage
+
+Setup the config.ini file first. You need to add sections via [blah] to drive which 
+certificates the CertMgr.py script is dealing with. You need to also keep the [CertMgr] 
+section or it won't run. 
+
+When config.ini is setup:
+
+Iterate through the defined certificates and get them from vault and save them appropriately:
+`./CertMgr.py -g`
+
+Iterate through the defined certificates and store them in the vault:
+`./CertMgr.py -s`
+
+you can also (eventually) run `./CertMgr.py -h` for more in-depth help. 
+
+### Misc Issues
+
+I did run into some issues installing on a raspberry pi. Pip versions way too old. I ended
+up doing a `pip install --upgrade pip` then installing the requirements using the copy of pip
+at /usr/local/bin/pip.... YMMV.
